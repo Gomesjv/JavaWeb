@@ -1,0 +1,15 @@
+com\petcare\web\repository\ConsultaRepository.class
+com\petcare\web\model\Consulta.class
+com\petcare\web\repository\AnimalRepository.class
+com\petcare\web\repository\ClienteRepository.class
+com\petcare\web\repository\VeterinarioRepository.class
+com\petcare\web\PetCareApplication.class
+com\petcare\web\service\ClienteService.class
+com\petcare\web\model\Cliente.class
+com\petcare\web\model\Produto.class
+com\petcare\web\model\Veterinario.class
+com\petcare\web\controller\ClienteController.class
+com\petcare\web\controller\PetCareController.class
+com\petcare\web\controller\PetCareModelAdvice.class
+com\petcare\web\model\Animal.class
+com\petcare\web\repository\ProdutoRepository.class

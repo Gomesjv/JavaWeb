@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PetCare | Gestão veterinária</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --primary: #23695f;
+            --text: #2d3741;
+            --background: #f4f7f8;
+            --line: #dee6e8;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--background);
+            color: var(--text);
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        header {
+            padding: 18px max(24px, calc((100% - 1120px) / 2));
+            background: var(--primary);
+            color: white;
+        }
+
+        header h1 { margin: 0; font-size: 24px; }
+        header p { margin: 4px 0 0; color: #dcf0ec; }
+        main { width: min(1120px, calc(100% - 32px)); margin: 24px auto; }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            overflow-x: auto;
+            margin-bottom: 16px;
+            border-bottom: 2px solid var(--line);
+        }
+
+        .tab-button {
+            flex: 0 0 auto;
+            padding: 12px 18px;
+            border: 0;
+            border-bottom: 3px solid transparent;
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+            font: 600 14px Arial, sans-serif;
+        }
+
+        .tab-button[aria-selected="true"] {
+            border-bottom-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .card {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: white;
+        }
+
+        h2 { margin: 0 0 16px; color: var(--primary); font-size: 18px; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field.full { grid-column: 1 / -1; }
+        label { font-size: 13px; font-weight: 600; }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            color: var(--text);
+            font: inherit;
+        }
+
+        textarea { min-height: 76px; resize: vertical; }
+        .error { color: #a52d26; font-size: 12px; }
+        .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+
+        button, .button {
+            display: inline-block;
+            padding: 9px 14px;
+            border: 0;
+            border-radius: 4px;
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            font: 600 13px Arial, sans-serif;
+            text-decoration: none;
+        }
+
+        .secondary { background: #e5eaec; color: var(--text); }
+        .danger { background: #be4c44; }
+        .notice { margin-bottom: 16px; padding: 12px; border-radius: 4px; background: #e4f3ef; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: 11px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+        th { background: var(--primary); color: white; font-size: 13px; }
+        td { font-size: 13px; }
+        .row-actions { display: flex; gap: 6px; }
+        .row-actions form { margin: 0; }
+        .empty { padding: 24px; color: #68757b; text-align: center; }
+
+        @media (max-width: 640px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .field.full { grid-column: auto; }
+            .card { padding: 14px; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>PetCare</h1>
+    <p>Gestão veterinária</p>
+</header>
+
+<main>
+    <div class="notice" role="status" th:if="${mensagem}" th:text="${mensagem}"></div>
+
+    <nav class="tabs" role="tablist" aria-label="Módulos do PetCare" th:attr="data-default-tab=${abaAtiva}">
+        <button class="tab-button" id="tab-clientes" type="button" role="tab"
+                aria-controls="painel-clientes" aria-selected="true" data-tab="clientes">Clientes</button>
+        <button class="tab-button" id="tab-animais" type="button" role="tab"
+                aria-controls="painel-animais" aria-selected="false" data-tab="animais">Animais</button>
+        <button class="tab-button" id="tab-veterinarios" type="button" role="tab"
+                aria-controls="painel-veterinarios" aria-selected="false" data-tab="veterinarios">Veterinários</button>
+        <button class="tab-button" id="tab-consultas" type="button" role="tab"
+                aria-controls="painel-consultas" aria-selected="false" data-tab="consultas">Consultas</button>
+        <button class="tab-button" id="tab-produtos" type="button" role="tab"
+                aria-controls="painel-produtos" aria-selected="false" data-tab="produtos">Produtos</button>
+    </nav>
+
+    <section class="tab-panel" id="painel-clientes" role="tabpanel" aria-labelledby="tab-clientes">
+        <section class="card">
+            <h2 th:text="${cliente.id == null ? 'Dados do cliente' : 'Atualizar cliente'}">Dados do cliente</h2>
+            <form th:action="@{/clientes}" th:object="${cliente}" method="post">
+                <input type="hidden" th:field="*{id}">
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="nome">Nome completo *</label>
+                        <input id="nome" type="text" th:field="*{nome}" required maxlength="150">
+                        <span class="error" th:if="${#fields.hasErrors('nome')}" th:errors="*{nome}"></span>
+                    </div>
+                    <div class="field">
+                        <label for="cpf">CPF *</label>
+                        <input id="cpf" type="text" th:field="*{cpf}" required maxlength="20">
+                        <span class="error" th:if="${#fields.hasErrors('cpf')}" th:errors="*{cpf}"></span>
+                    </div>
+                    <div class="field">
+                        <label for="telefone">Telefone</label>
+                        <input id="telefone" type="tel" th:field="*{telefone}" maxlength="30">
+                    </div>
+                    <div class="field">
+                        <label for="email">E-mail</label>
+                        <input id="email" type="email" th:field="*{email}" maxlength="150">
+                        <span class="error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></span>
+                    </div>
+                    <div class="field full">
+                        <label for="endereco">Endereço</label>
+                        <input id="endereco" type="text" th:field="*{endereco}" maxlength="250">
+                    </div>
+                </div>
+                <div class="actions">
+                    <button type="submit" th:text="${cliente.id == null ? 'Cadastrar' : 'Atualizar'}">Cadastrar</button>
+                    <a class="button secondary" th:if="${cliente.id != null}" th:href="@{/clientes}">Limpar</a>
+                    <button class="secondary" type="reset" th:if="${cliente.id == null}">Limpar</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Clientes cadastrados</h2>
+            <div class="table-wrap" th:if="${!#lists.isEmpty(clientes)}">
+                <table>
+                    <thead><tr><th>ID</th><th>Nome</th><th>CPF</th><th>Telefone</th><th>E-mail</th><th>Endereço</th><th>Ações</th></tr></thead>
+                    <tbody>
+                    <tr th:each="item : ${clientes}">
+                        <td th:text="${item.id}"></td><td th:text="${item.nome}"></td><td th:text="${item.cpf}"></td>
+                        <td th:text="${item.telefone}"></td><td th:text="${item.email}"></td><td th:text="${item.endereco}"></td>
+                        <td><div class="row-actions">
+                            <a class="button" th:href="@{/clientes/{id}/editar(id=${item.id})}">Editar</a>
+                            <form th:action="@{/clientes/{id}/excluir(id=${item.id})}" method="post">
+                                <button class="danger" type="submit">Excluir</button>
+                            </form>
+                        </div></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="empty" th:if="${#lists.isEmpty(clientes)}">Nenhum cliente cadastrado.</p>
+        </section>
+    </section>
+
+    <section class="tab-panel" id="painel-animais" role="tabpanel" aria-labelledby="tab-animais" hidden>
+        <section class="card">
+            <h2 th:text="${animal.id == null ? 'Cadastrar animal' : 'Editar animal'}">Cadastrar animal</h2>
+            <form th:action="@{/animais}" th:object="${animal}" method="post">
+                <input type="hidden" th:field="*{id}">
+                <div class="form-grid">
+                    <div class="field"><label for="animal-nome">Nome *</label><input id="animal-nome" th:field="*{nome}" required></div>
+                    <div class="field"><label for="animal-especie">Espécie</label><input id="animal-especie" th:field="*{especie}"></div>
+                    <div class="field"><label for="animal-raca">Raça</label><input id="animal-raca" th:field="*{raca}"></div>
+                    <div class="field"><label for="animal-idade">Idade (anos)</label><input id="animal-idade" type="number" min="0" th:field="*{idade}"></div>
+                    <div class="field"><label for="animal-peso">Peso (kg)</label><input id="animal-peso" type="number" min="0" step="0.01" th:field="*{peso}"></div>
+                    <div class="field">
+                        <label for="animal-cliente">Tutor</label>
+                        <select id="animal-cliente" name="clienteId">
+                            <option value="">Sem tutor</option>
+                            <option th:each="item : ${clientes}" th:value="${item.id}" th:text="${item.nome}"
+                                    th:selected="${animal.cliente != null and item.id == animal.cliente.id}"></option>
+                        </select>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button type="submit" th:text="${animal.id == null ? 'Cadastrar animal' : 'Salvar alterações'}">Cadastrar animal</button>
+                    <a class="button secondary" href="/clientes#animais" th:if="${animal.id != null}">Cancelar</a>
+                </div>
+            </form>
+        </section>
+        <section class="card">
+            <h2>Animais cadastrados</h2>
+            <div class="table-wrap" th:if="${!#lists.isEmpty(animais)}">
+                <table>
+                    <thead><tr><th>Nome</th><th>Espécie</th><th>Raça</th><th>Idade</th><th>Peso (kg)</th><th>Tutor</th><th>Ações</th></tr></thead>
+                    <tbody><tr th:each="item : ${animais}">
+                        <td th:text="${item.nome}"></td><td th:text="${item.especie}"></td><td th:text="${item.raca}"></td>
+                        <td th:text="${item.idade}"></td><td th:text="${item.peso}"></td>
+                        <td th:text="${item.cliente != null ? item.cliente.nome : 'Sem tutor'}"></td>
+                        <td><div class="row-actions">
+                            <a class="button" th:href="@{/animais/{id}/editar(id=${item.id})}">Editar</a>
+                            <form th:action="@{/animais/{id}/excluir(id=${item.id})}" method="post">
+                                <button class="danger" type="submit">Excluir</button>
+                            </form>
+                        </div></td>
+                    </tr></tbody>
+                </table>
+            </div>
+            <p class="empty" th:if="${#lists.isEmpty(animais)}">Nenhum animal cadastrado.</p>
+        </section>
+    </section>
+
+    <section class="tab-panel" id="painel-veterinarios" role="tabpanel" aria-labelledby="tab-veterinarios" hidden>
+        <section class="card">
+            <h2 th:text="${veterinario.id == null ? 'Cadastrar veterinário' : 'Editar veterinário'}">Cadastrar veterinário</h2>
+            <form th:action="@{/veterinarios}" th:object="${veterinario}" method="post">
+                <input type="hidden" th:field="*{id}">
+                <div class="form-grid">
+                    <div class="field"><label for="vet-nome">Nome *</label><input id="vet-nome" th:field="*{nome}" required></div>
+                    <div class="field"><label for="vet-crmv">CRMV *</label><input id="vet-crmv" th:field="*{crmv}" required></div>
+                    <div class="field"><label for="vet-especialidade">Especialidade</label><input id="vet-especialidade" th:field="*{especialidade}"></div>
+                    <div class="field"><label for="vet-telefone">Telefone</label><input id="vet-telefone" type="tel" th:field="*{telefone}"></div>
+                    <div class="field"><label for="vet-email">E-mail</label><input id="vet-email" type="email" th:field="*{email}"></div>
+                </div>
+                <div class="actions">
+                    <button type="submit" th:text="${veterinario.id == null ? 'Cadastrar veterinário' : 'Salvar alterações'}">Cadastrar veterinário</button>
+                    <a class="button secondary" href="/clientes#veterinarios" th:if="${veterinario.id != null}">Cancelar</a>
+                </div>
+            </form>
+        </section>
+        <section class="card">
+            <h2>Veterinários cadastrados</h2>
+            <div class="table-wrap" th:if="${!#lists.isEmpty(veterinarios)}">
+                <table>
+                    <thead><tr><th>Nome</th><th>CRMV</th><th>Especialidade</th><th>Telefone</th><th>E-mail</th><th>Ações</th></tr></thead>
+                    <tbody><tr th:each="item : ${veterinarios}">
+                        <td th:text="${item.nome}"></td><td th:text="${item.crmv}"></td><td th:text="${item.especialidade}"></td>
+                        <td th:text="${item.telefone}"></td><td th:text="${item.email}"></td>
+                        <td><div class="row-actions">
+                            <a class="button" th:href="@{/veterinarios/{id}/editar(id=${item.id})}">Editar</a>
+                            <form th:action="@{/veterinarios/{id}/excluir(id=${item.id})}" method="post">
+                                <button class="danger" type="submit">Excluir</button>
+                            </form>
+                        </div></td>
+                    </tr></tbody>
+                </table>
+            </div>
+            <p class="empty" th:if="${#lists.isEmpty(veterinarios)}">Nenhum veterinário cadastrado.</p>
+        </section>
+    </section>
+
+    <section class="tab-panel" id="painel-consultas" role="tabpanel" aria-labelledby="tab-consultas" hidden>
+        <section class="card">
+            <h2 th:text="${consultaEditando == null ? 'Agendar consulta' : 'Editar consulta'}">Agendar consulta</h2>
+            <form th:action="@{/consultas}" method="post">
+                <input type="hidden" name="id" th:value="${consultaEditando != null ? consultaEditando.id : ''}">
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="consulta-animal">Animal *</label>
+                        <select id="consulta-animal" name="animalId" required>
+                            <option value="">Selecione um animal</option>
+                            <option th:each="item : ${animais}" th:value="${item.id}" th:text="${item.nome}"
+                                    th:selected="${consultaEditando != null and item.id == consultaEditando.animal.id}"></option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="consulta-veterinario">Veterinário *</label>
+                        <select id="consulta-veterinario" name="veterinarioId" required>
+                            <option value="">Selecione um veterinário</option>
+                            <option th:each="item : ${veterinarios}" th:value="${item.id}" th:text="${item.nome}"
+                                    th:selected="${consultaEditando != null and item.id == consultaEditando.veterinario.id}"></option>
+                        </select>
+                    </div>
+                    <div class="field"><label for="consulta-data">Data e hora *</label><input id="consulta-data" name="dataHora" type="datetime-local" th:value="${dataHoraConsulta}" required></div>
+                    <div class="field">
+                        <label for="consulta-status">Status</label>
+                        <select id="consulta-status" name="status">
+                            <option value="Agendada" th:selected="${consultaEditando == null or consultaEditando.status == 'Agendada'}">Agendada</option>
+                            <option value="Realizada" th:selected="${consultaEditando != null and consultaEditando.status == 'Realizada'}">Realizada</option>
+                            <option value="Cancelada" th:selected="${consultaEditando != null and consultaEditando.status == 'Cancelada'}">Cancelada</option>
+                        </select>
+                    </div>
+                    <div class="field full"><label for="consulta-descricao">Descrição</label><textarea id="consulta-descricao" name="descricao" th:text="${consultaEditando != null ? consultaEditando.descricao : ''}"></textarea></div>
+                </div>
+                <div class="actions">
+                    <button type="submit" th:text="${consultaEditando == null ? 'Agendar consulta' : 'Salvar alterações'}">Agendar consulta</button>
+                    <a class="button secondary" href="/clientes#consultas" th:if="${consultaEditando != null}">Cancelar</a>
+                </div>
+            </form>
+        </section>
+        <section class="card">
+            <h2>Consultas agendadas</h2>
+            <div class="table-wrap" th:if="${!#lists.isEmpty(consultas)}">
+                <table>
+                    <thead><tr><th>Data e hora</th><th>Animal</th><th>Veterinário</th><th>Descrição</th><th>Status</th><th>Ações</th></tr></thead>
+                    <tbody><tr th:each="item : ${consultas}">
+                        <td th:text="${#temporals.format(item.dataHora, 'dd/MM/yyyy HH:mm')}"></td>
+                        <td th:text="${item.animal.nome}"></td><td th:text="${item.veterinario.nome}"></td>
+                        <td th:text="${item.descricao}"></td><td th:text="${item.status}"></td>
+                        <td><div class="row-actions">
+                            <a class="button" th:href="@{/consultas/{id}/editar(id=${item.id})}">Editar</a>
+                            <form th:action="@{/consultas/{id}/excluir(id=${item.id})}" method="post">
+                                <button class="danger" type="submit">Excluir</button>
+                            </form>
+                        </div></td>
+                    </tr></tbody>
+                </table>
+            </div>
+            <p class="empty" th:if="${#lists.isEmpty(consultas)}">Nenhuma consulta agendada.</p>
+        </section>
+    </section>
+
+    <section class="tab-panel" id="painel-produtos" role="tabpanel" aria-labelledby="tab-produtos" hidden>
+        <section class="card">
+            <h2 th:text="${produto.id == null ? 'Cadastrar produto' : 'Editar produto'}">Cadastrar produto</h2>
+            <form th:action="@{/produtos}" th:object="${produto}" method="post">
+                <input type="hidden" th:field="*{id}">
+                <div class="form-grid">
+                    <div class="field"><label for="produto-nome">Nome *</label><input id="produto-nome" th:field="*{nome}" required></div>
+                    <div class="field"><label for="produto-categoria">Categoria</label><input id="produto-categoria" th:field="*{categoria}"></div>
+                    <div class="field"><label for="produto-preco">Preço (R$)</label><input id="produto-preco" type="number" min="0" step="0.01" th:field="*{preco}"></div>
+                    <div class="field"><label for="produto-estoque">Quantidade em estoque</label><input id="produto-estoque" type="number" min="0" th:field="*{quantidadeEstoque}"></div>
+                    <div class="field full"><label for="produto-descricao">Descrição</label><textarea id="produto-descricao" th:field="*{descricao}"></textarea></div>
+                </div>
+                <div class="actions">
+                    <button type="submit" th:text="${produto.id == null ? 'Cadastrar produto' : 'Salvar alterações'}">Cadastrar produto</button>
+                    <a class="button secondary" href="/clientes#produtos" th:if="${produto.id != null}">Cancelar</a>
+                </div>
+            </form>
+        </section>
+        <section class="card">
+            <h2>Produtos cadastrados</h2>
+            <div class="table-wrap" th:if="${!#lists.isEmpty(produtos)}">
+                <table>
+                    <thead><tr><th>Nome</th><th>Categoria</th><th>Descrição</th><th>Preço</th><th>Estoque</th><th>Ações</th></tr></thead>
+                    <tbody><tr th:each="item : ${produtos}">
+                        <td th:text="${item.nome}"></td><td th:text="${item.categoria}"></td><td th:text="${item.descricao}"></td>
+                        <td th:text="${item.preco}"></td><td th:text="${item.quantidadeEstoque}"></td>
+                        <td><div class="row-actions">
+                            <a class="button" th:href="@{/produtos/{id}/editar(id=${item.id})}">Editar</a>
+                            <form th:action="@{/produtos/{id}/excluir(id=${item.id})}" method="post">
+                                <button class="danger" type="submit">Excluir</button>
+                            </form>
+                        </div></td>
+                    </tr></tbody>
+                </table>
+            </div>
+            <p class="empty" th:if="${#lists.isEmpty(produtos)}">Nenhum produto cadastrado.</p>
+        </section>
+    </section>
+</main>
+
+<script>
+    const tabs = Array.from(document.querySelectorAll('[data-tab]'));
+
+    function selectTab(name) {
+        const selected = tabs.find((tab) => tab.dataset.tab === name) || tabs[0];
+        tabs.forEach((tab) => {
+            const active = tab === selected;
+            tab.setAttribute('aria-selected', String(active));
+            document.getElementById(tab.getAttribute('aria-controls')).hidden = !active;
+        });
+    }
+
+    tabs.forEach((tab) => tab.addEventListener('click', () => {
+        selectTab(tab.dataset.tab);
+        history.replaceState(null, '', `#${tab.dataset.tab}`);
+    }));
+
+    selectTab(window.location.hash.slice(1) || document.querySelector('.tabs').dataset.defaultTab);
+</script>
+</body>
+</html>
