@@ -1,6 +1,7 @@
 package com.petcare.web.controller;
 
 import com.petcare.web.model.Cliente;
+import com.petcare.web.repository.AnimalRepository;
 import com.petcare.web.service.ClienteService;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
@@ -17,9 +18,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class ClienteController {
 
     private final ClienteService clienteService;
+    private final AnimalRepository animalRepository;
 
-    public ClienteController(ClienteService clienteService) {
+    public ClienteController(ClienteService clienteService, AnimalRepository animalRepository) {
         this.clienteService = clienteService;
+        this.animalRepository = animalRepository;
     }
 
     @GetMapping
@@ -51,6 +54,15 @@ public class ClienteController {
 
     @PostMapping("/{id}/excluir")
     public String excluir(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        if (!clienteService.listarTodos().stream().anyMatch(cliente -> cliente.getId().equals(id))) {
+            redirectAttributes.addFlashAttribute("erro", "Cliente não encontrado.");
+            return "redirect:/clientes";
+        }
+        if (animalRepository.countByClienteId(id) > 0) {
+            redirectAttributes.addFlashAttribute("erro",
+                    "Transfira ou exclua os animais deste cliente antes de removê-lo.");
+            return "redirect:/clientes";
+        }
         clienteService.excluir(id);
         redirectAttributes.addFlashAttribute("mensagem", "Cliente excluído com sucesso!");
         return "redirect:/clientes";

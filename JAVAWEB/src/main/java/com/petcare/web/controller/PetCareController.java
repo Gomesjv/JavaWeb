@@ -9,13 +9,18 @@ import com.petcare.web.repository.ClienteRepository;
 import com.petcare.web.repository.ConsultaRepository;
 import com.petcare.web.repository.ProdutoRepository;
 import com.petcare.web.repository.VeterinarioRepository;
+import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDateTime;
@@ -54,8 +59,14 @@ public class PetCareController {
     }
 
     @PostMapping("/animais")
-    public String salvarAnimal(Animal animal, @RequestParam(required = false) Long clienteId,
+    public String salvarAnimal(@Valid @ModelAttribute Animal animal, BindingResult resultado, Model model,
+                               @RequestParam(required = false) Long clienteId,
                                RedirectAttributes redirectAttributes) {
+        if (resultado.hasErrors()) {
+            model.addAttribute("abaAtiva", "animais");
+            return "clientes";
+        }
+
         boolean atualizacao = animal.getId() != null;
         if (clienteId != null) {
             animal.setCliente(clienteRepository.findById(clienteId)
@@ -71,6 +82,15 @@ public class PetCareController {
 
     @PostMapping("/animais/{id}/excluir")
     public String excluirAnimal(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        if (!animalRepository.existsById(id)) {
+            redirectAttributes.addFlashAttribute("erro", "Animal não encontrado.");
+            return "redirect:/clientes#animais";
+        }
+        if (consultaRepository.countByAnimalId(id) > 0) {
+            redirectAttributes.addFlashAttribute("erro",
+                    "Exclua as consultas deste animal antes de removê-lo.");
+            return "redirect:/clientes#animais";
+        }
         animalRepository.deleteById(id);
         redirectAttributes.addFlashAttribute("mensagem", "Animal excluído com sucesso!");
         return "redirect:/clientes#animais";
@@ -79,14 +99,25 @@ public class PetCareController {
     @GetMapping("/veterinarios/{id}/editar")
     public String editarVeterinario(@PathVariable Long id, Model model) {
         model.addAttribute("veterinario", veterinarioRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Veterinário não encontrado: " + id)));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Veterinário não encontrado: " + id)));
         model.addAttribute("abaAtiva", "veterinarios");
         return "clientes";
     }
 
     @PostMapping("/veterinarios")
-    public String salvarVeterinario(Veterinario veterinario, RedirectAttributes redirectAttributes) {
+    public String salvarVeterinario(@Valid Veterinario veterinario, BindingResult resultado, Model model,
+                                    RedirectAttributes redirectAttributes) {
+        if (resultado.hasErrors()) {
+            model.addAttribute("abaAtiva", "veterinarios");
+            return "clientes";
+        }
+
         boolean atualizacao = veterinario.getId() != null;
+        if (atualizacao && !veterinarioRepository.existsById(veterinario.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Veterinário não encontrado: " + veterinario.getId());
+        }
         veterinarioRepository.save(veterinario);
         redirectAttributes.addFlashAttribute("mensagem",
                 atualizacao ? "Veterinário atualizado com sucesso!" : "Veterinário cadastrado com sucesso!");
@@ -95,6 +126,15 @@ public class PetCareController {
 
     @PostMapping("/veterinarios/{id}/excluir")
     public String excluirVeterinario(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        if (!veterinarioRepository.existsById(id)) {
+            redirectAttributes.addFlashAttribute("erro", "Veterinário não encontrado.");
+            return "redirect:/clientes#veterinarios";
+        }
+        if (consultaRepository.countByVeterinarioId(id) > 0) {
+            redirectAttributes.addFlashAttribute("erro",
+                    "Exclua ou transfira as consultas deste veterinário antes de removê-lo.");
+            return "redirect:/clientes#veterinarios";
+        }
         veterinarioRepository.deleteById(id);
         redirectAttributes.addFlashAttribute("mensagem", "Veterinário excluído com sucesso!");
         return "redirect:/clientes#veterinarios";
@@ -113,11 +153,18 @@ public class PetCareController {
 
     @PostMapping("/consultas")
     public String salvarConsulta(@RequestParam(required = false) Long id,
-                                 @RequestParam Long animalId, @RequestParam Long veterinarioId,
-                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataHora,
+                                 @RequestParam(required = false) Long animalId,
+                                 @RequestParam(required = false) Long veterinarioId,
+                                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataHora,
                                  @RequestParam(required = false) String descricao,
                                  @RequestParam(required = false) String status,
                                  RedirectAttributes redirectAttributes) {
+        if (animalId == null || veterinarioId == null || dataHora == null) {
+            redirectAttributes.addFlashAttribute("erro",
+                    "Informe animal, veterinário e data/hora para agendar a consulta.");
+            return "redirect:/clientes#consultas";
+        }
+
         boolean atualizacao = id != null;
         Consulta consulta = atualizacao
                 ? consultaRepository.findById(id)
@@ -138,6 +185,10 @@ public class PetCareController {
 
     @PostMapping("/consultas/{id}/excluir")
     public String excluirConsulta(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        if (!consultaRepository.existsById(id)) {
+            redirectAttributes.addFlashAttribute("erro", "Consulta não encontrada.");
+            return "redirect:/clientes#consultas";
+        }
         consultaRepository.deleteById(id);
         redirectAttributes.addFlashAttribute("mensagem", "Consulta excluída com sucesso!");
         return "redirect:/clientes#consultas";
@@ -152,7 +203,13 @@ public class PetCareController {
     }
 
     @PostMapping("/produtos")
-    public String salvarProduto(Produto produto, RedirectAttributes redirectAttributes) {
+    public String salvarProduto(@Valid @ModelAttribute Produto produto, BindingResult resultado, Model model,
+                               RedirectAttributes redirectAttributes) {
+        if (resultado.hasErrors()) {
+            model.addAttribute("abaAtiva", "produtos");
+            return "clientes";
+        }
+
         boolean atualizacao = produto.getId() != null;
         produtoRepository.save(produto);
         redirectAttributes.addFlashAttribute("mensagem",
@@ -162,6 +219,10 @@ public class PetCareController {
 
     @PostMapping("/produtos/{id}/excluir")
     public String excluirProduto(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        if (!produtoRepository.existsById(id)) {
+            redirectAttributes.addFlashAttribute("erro", "Produto não encontrado.");
+            return "redirect:/clientes#produtos";
+        }
         produtoRepository.deleteById(id);
         redirectAttributes.addFlashAttribute("mensagem", "Produto excluído com sucesso!");
         return "redirect:/clientes#produtos";
